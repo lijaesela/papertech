@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+
+#
+# hyper-minimal macro language
+# concatenates multiple files if given
+# usage: ptech <file.pt>
+#
+
+set -e
+
+# CONFIG:
+
+escapechar="\\"
+verbose="false"
+
+# -- PROGRAM --
+
+# print to stderr
+err () {
+	echo "$@" >&2
+}
+
+# verbose output
+if [ "$verbose" = "true" ]; then
+	vb () {
+		err "$@"
+	}
+else
+	vb () {
+		true
+	}
+fi
+
+# overengineered purely aesthetic change for fake enums
+enum () {
+	_prefix="$1"
+	shift
+
+	while [ -n "$*" ]; do
+
+		if [ "$2" = "-" ]; then
+			if [ "$_val" ]; then
+				_val=$((_val + 1))
+			else
+				_val=0
+			fi
+		else
+			_val="$2"
+		fi
+
+		eval "${_prefix}_${1}=\"\$_val\""
+		shift 2
+	done
+
+	unset _prefix _val
+}
+
+for file in $@; do
+	if [ ! -r "$file" ]; then
+		err "failed to read one or more inputs"
+		exit 1
+	fi
+done
+
+# parser states
+enum p \
+	NORM - \
+	VAR  - \
+	DECL - \
+	DVAR -
+
+# split string on delimiter, thanks Dylan
+split() {
+	set -f
+	old_ifs=$IFS
+	IFS=$2
+
+	# shellcheck disable=2086
+	set -- $1
+
+	# Print each list value on its own line.
+	printf '%s\n' "$@"
+
+	IFS=$old_ifs
+	set +f
+}
+
+# read file into array
+mapfile -t -O 1 buffer < "$file"
+
+# current state of parser
+pstate=$p_NORM
+
+# buffer to store variables in
+varbuf=""
+
+# parser
+for (( i=1; i<=${#buffer[@]}; i++ )); do
+	vb "loop beginning for line $i"
+
+	# go in and out of declare state accordingly
+	if [ "${buffer[i]}" = "$escapechar" ]; then
+		if [ "$pstate" = "$p_NORM" ]; then
+			pstate=$p_DECL
+			vb "switching to DECL at line $i"
+		else
+			pstate=$p_NORM
+			vb "switching to NORM at line $i"
+		fi
+		continue
+	fi
+
+	# comments in declare blocks
+	if [ "$pstate" = "$p_DECL" ]; then
+		if [[ ! ${buffer[i]} == *"$escapechar"* ]]; then
+			vb "line $i is a comment, skipping"
+			continue
+		fi
+	fi
+
+	# iterate through the line to dereference variables
+	vb "iterating through ${#buffer[i]} characters in pstate $pstate"
+	for (( j=0; j<${#buffer[i]}; j++ )); do
+
+		case "$pstate" in
+			$p_NORM)
+				case "${buffer[i]:$j:1}" in
+					"$escapechar") pstate=$p_VAR; vb "switching to VAR at $i $j";;
+					*) echo -n "${buffer[i]:$j:1}";;
+				esac
+				;;
+			$p_VAR)
+				case "${buffer[i]:$j:1}" in
+					"$escapechar")
+						eval "echo -n \"\$${varbuf}\""
+						varbuf=""
+						pstate=$p_NORM
+						vb "switching to NORM at $i $j"
+						;;
+					*) varbuf="${varbuf}${buffer[i]:$j:1}";;
+				esac
+				;;
+			$p_DECL)
+				case "${buffer[i]:$j:1}" in
+					"$escapechar") pstate=$p_DVAR; vb "switching to DVAR at $i $j, declbuf is $declbuf";;
+					" ") true;; # ignore optional spaces in declarations
+					*) declbuf="${declbuf}${buffer[i]:$j:1}";;
+				esac
+				;;
+			$p_DVAR)
+				case "${buffer[i]:$j:1}" in
+					"$escapechar") pstate=$p_DECL; vb "switching to DECL at $i $j, dvarbuf is $dvarbuf"
+						eval "${pfx}${declbuf}=\"\$dvarbuf\""
+						dvarbuf=""; declbuf="";;
+					*) dvarbuf="${dvarbuf}${buffer[i]:$j:1}";;
+				esac
+				;;
+		esac
+
+
+	done
+	# TODO: declare blocks spit out extra newlines somehow
+	[ "$pstate" = "$p_NORM" ] && echo
+	vb "line $i complete"
+done
