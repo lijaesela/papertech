@@ -13,7 +13,7 @@ set -e
 escapechar="\\"
 verbose="false"
 
-# -- PROGRAM --
+# -- UTILS --
 
 # print to stderr
 err () {
@@ -23,7 +23,7 @@ err () {
 # verbose output
 if [ "$verbose" = "true" ]; then
 	vb () {
-		err "$@"
+		echo "$@" >&2
 	}
 else
 	vb () {
@@ -55,6 +55,9 @@ enum () {
 	unset _prefix _val
 }
 
+# -- MAIN PROGRAM --
+
+# exit before anything else if input files are not readable
 for file in $@; do
 	if [ ! -r "$file" ]; then
 		err "failed to read one or more inputs"
@@ -63,27 +66,17 @@ for file in $@; do
 done
 
 # parser states
+
+# normal state
+# dereferencing a variable
+# inside a declare block
+# defining a variable
+
 enum p \
 	NORM - \
 	VAR  - \
 	DECL - \
 	DVAR -
-
-# split string on delimiter, thanks Dylan
-split() {
-	set -f
-	old_ifs=$IFS
-	IFS=$2
-
-	# shellcheck disable=2086
-	set -- $1
-
-	# Print each list value on its own line.
-	printf '%s\n' "$@"
-
-	IFS=$old_ifs
-	set +f
-}
 
 # read file into array
 mapfile -t -O 1 buffer < "$file"
@@ -123,12 +116,17 @@ for (( i=1; i<=${#buffer[@]}; i++ )); do
 	for (( j=0; j<${#buffer[i]}; j++ )); do
 
 		case "$pstate" in
+			# pass characters along, go into VAR state once macro character is hit
 			$p_NORM)
 				case "${buffer[i]:$j:1}" in
-					"$escapechar") pstate=$p_VAR; vb "switching to VAR at $i $j";;
+					"$escapechar")
+						pstate=$p_VAR
+						vb "switching to VAR at $i $j"
+						;;
 					*) echo -n "${buffer[i]:$j:1}";;
 				esac
 				;;
+			# read the var name into buffer, and output its contents once the closing macro key is hit
 			$p_VAR)
 				case "${buffer[i]:$j:1}" in
 					"$escapechar")
@@ -140,18 +138,27 @@ for (( i=1; i<=${#buffer[@]}; i++ )); do
 					*) varbuf="${varbuf}${buffer[i]:$j:1}";;
 				esac
 				;;
+			# part of declaring variables
 			$p_DECL)
 				case "${buffer[i]:$j:1}" in
-					"$escapechar") pstate=$p_DVAR; vb "switching to DVAR at $i $j, declbuf is $declbuf";;
+					"$escapechar")
+						pstate=$p_DVAR
+						vb "switching to DVAR at $i $j, declbuf is $declbuf"
+						;;
 					" ") true;; # ignore optional spaces in declarations
 					*) declbuf="${declbuf}${buffer[i]:$j:1}";;
 				esac
 				;;
+			# another part of declaring variables
 			$p_DVAR)
 				case "${buffer[i]:$j:1}" in
-					"$escapechar") pstate=$p_DECL; vb "switching to DECL at $i $j, dvarbuf is $dvarbuf"
+					"$escapechar")
 						eval "${pfx}${declbuf}=\"\$dvarbuf\""
-						dvarbuf=""; declbuf="";;
+						dvarbuf=""
+						declbuf=""
+						pstate=$p_DECL
+						vb "switching to DECL at $i $j, dvarbuf is $dvarbuf"
+						;;
 					*) dvarbuf="${dvarbuf}${buffer[i]:$j:1}";;
 				esac
 				;;
@@ -159,7 +166,9 @@ for (( i=1; i<=${#buffer[@]}; i++ )); do
 
 
 	done
-	# TODO: declare blocks spit out extra newlines somehow
+
+	# add newline after each line
 	[ "$pstate" = "$p_NORM" ] && echo
+
 	vb "line $i complete"
 done
