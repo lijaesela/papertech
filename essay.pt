@@ -1,0 +1,21 @@
+\
+	Fake essay with macros used for citations and formatting.
+
+	Citations:
+	foo \(Foo Smith, 1969)\
+	doe \(John Doe, 2070)\
+	oldfont \Courier New\
+
+	Formatting:
+	id \	\
+	bquote \		>\
+\
+\id\This is a real use case resembling short answers I often have to do for school. Using Latex would simply be overkill, but Markdown also isn't a good choice, as it isn't made for paragraphed writing. I could give up and open a word processor, but I love neovim too much.
+\id\After ptech processes this, I can simply paste it into whatever weird proprietary program I have to use to turn it in to my teacher.
+\id\Dr. Doe said once famously stated, "foo bar" \doe\. It is indeed a very strange deviation from standard typographical practice for APA to indent the first paragraph. I, however, do love that it is accepted in APA to use a monospaced font. I use new-aged monospaced fonts all the time, but when I use something like \oldfont\, it makes me feel like I'm a detective.
+\id\There are other quotes to note from very, very famous people. Mr. Smith once said that "foo bar baz" \foo\.
+
+\bquote\ this is a big block quote.
+\bquote\ this is a big block quote.
+\bquote\ this is a big block quote.
+\bquote\ this is a big block quote.

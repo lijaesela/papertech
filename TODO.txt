@@ -1,0 +1,6 @@
+PRESSING:
+MINOR:
+AMBITIOUS:
+	- allow recursive dereferencing of variables
+	- implement functions
+	- rewrite in a not shitty language
