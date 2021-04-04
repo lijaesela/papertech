@@ -1,44 +1,32 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define ESC '\\'
+#define ERR(msg) fprintf(stderr, "ERROR: %s\n", msg)
+#define DIE exit(EXIT_FAILURE)
 
-/* #define PANIC(...) fprintf(stderr, __VA_ARGS__); exit(EXIT_FAILURE) */
-#define PANIC \
-	fprintf(stderr, "ERROR: %s\n", strerror(errno)); \
-	exit(EXIT_FAILURE);
+/* #define PTECH_DEBUG */
 
-enum states {
-	NORM,
-	DVAR,
-	BLOK,
-};
-
-const char * getFile(const char *);
-void ptech_parse(const char *);
-void pHelp(void);
-
-main(int argc, char * argv[])
+void print_help(void)
 {
-	const char * msg = getFile(argv[1]);
-	ptech_parse(msg);
-	if (argc < 2) {
-		pHelp();
-		return EXIT_SUCCESS;
-	}
-
-
-	return EXIT_SUCCESS;
+	printf(
+			"usage: ptech <escape character> <file>\n"
+			"or:    ptech <file>\n"
+			"The latter defaults to '\\' as an escape.\n"
+		  );
 }
 
-const char * getFile(const char * name)
+const char * file_to_string(const char * path)
 {
 	char * buffer = 0;
 	long length;
-	FILE * f = fopen (name, "rb");
-	if (f == NULL) PANIC;
+	FILE * f = fopen (path, "rb");
+
+	if (f == NULL) {
+		ERR("Null file pointer. File does not exist or is not readable.");
+		DIE;
+	}
 	
-	/* TODO: more error handling */
+	/* TODO: more errors */
 	fseek (f, 0, SEEK_END);
 	length = ftell (f);
 	fseek (f, 0, SEEK_SET);
@@ -50,30 +38,40 @@ const char * getFile(const char * name)
 	return buffer;
 }
 
-void ptech_parse(const char * in) {
-	int i = 0,
-		lines = 0,
-		pstate = NORM;
-
-	while (in[i] != '\0') {
-		switch (pstate) {
-			case NORM:
-				if (in[i] == ESC)
-					pstate = DVAR;
-				else
-					putchar(in[i]);
-				break;
-			case DVAR:
-				if (in[i] == ESC)
-					pstate = NORM;
-				break;
-		}
+void ptech_parse(const char e, const char * s)
+{
+	int i = 0;
+	while (s[i] != '\0') {
+		if (s[i] == e)
+			putchar('Q');
+		else
+			putchar(s[i]);
 		++i;
 	}
 }
 
-void pHelp(void) {
-	printf(
-			"usage: ptech <file>\n"
-		  );
+main(int argc, char * argv[])
+{
+	char esc; /* user-configured escape character */
+	int argv_file_index; /* which arg is the file */
+
+	if (argc < 2) { /* if no args */
+		print_help();
+		return EXIT_SUCCESS;
+	} else if (argc < 3) { /* if only file is given */
+		esc = '\\';
+		argv_file_index = 1;
+	} else { /* if both escapechar and file are given */
+		esc = argv[1][0];
+		argv_file_index = 2;
+	}
+
+	const char * buffer = file_to_string(argv[argv_file_index]);
+
+#ifdef PTECH_DEBUG
+	printf("ORIGINAL FILE:\n%s", msg);
+	printf("PTECH OUTPUT:\n");
+#endif /* PTECH_DEBUG */
+
+	ptech_parse(esc, buffer);
 }
