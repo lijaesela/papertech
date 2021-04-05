@@ -1,2 +1,4 @@
+# yeah it's a shitty makefile idc
+# btw u need uthash, it's available on most distros
 make:
-	gcc --std=c90 ptech.c
+	cc --std=c90 ptech.c
