@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
 
-# WARNING: the usage and error handling of this script differ from the c implementation. I will fix this  l a t e r
-
 #
 # hyper-minimal macro language
-# concatenates multiple files if given
+# usage: ptech <escape character> <file>
+#    or: ptech <file>
 #
 
 set -e
 
 # CONFIG:
 
-escapechar="\\"
+escape_default="\\"
 verbose="false"
 
 # -- UTILS --
@@ -58,13 +57,19 @@ enum () {
 
 # -- MAIN PROGRAM --
 
+if [ "$2" ]; then
+	escapechar="$1"
+	file="$2"
+else
+	escapechar="$escape_default"
+	file="$1"
+fi
+
 # exit before anything else if input files are not readable
-for file in $@; do
-	if [ ! -r "$file" ]; then
-		err "failed to read one or more inputs"
-		exit 1
-	fi
-done
+if [ ! -r "$file" ]; then
+	err "PTECH ERROR: File does not exist or is not readable."
+	exit 1
+fi
 
 # parser states
 
