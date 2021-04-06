@@ -3,4 +3,5 @@ MINOR:
 AMBITIOUS:
 	- allow recursive dereferencing of variables
 	- implement functions
-	- rewrite in a not shitty language
+DONE:
+	- rewrite in a not shitty language (C backend complete)

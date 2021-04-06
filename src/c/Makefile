@@ -3,4 +3,4 @@
 CFLAGS=--std=c90
 
 make:
-	cc $(CFLAGS) ptech.c
+	cc $(CFLAGS) ptech.c -o ptech

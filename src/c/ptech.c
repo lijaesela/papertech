@@ -1,46 +1,34 @@
-#include <uthash.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-#define ERR(msg) fprintf(stderr, "ERROR: %s\n", msg)
-#define DIE exit(EXIT_FAILURE)
+#include "config.h"
+#include "ptech_file_io.h"
+#include "ptech_hash_vars.h"
 
-/* BLOCK_DELIM checks if a character in a string is an escape character alone on a line.
- * this is surprisingly complex as this escape char will be surrounded by newlines
- * unless it is at the very beginning or end of the file (which will often be the case!).
- * if we're calling this we already know that s[i] is an escape character
- * - takes (string, iterator)
- */
-#define BLOCK_DELIM(s, i) (i == 0 && s[i+1] == '\n') || (s[i-1] == '\n' && (s[i+1] == '\n' || s[i+1] == '\0'))
+extern PtechVar * allvars;
 
-#define MAX_VARNAME_SIZE 999
-#define MAX_VALUE_SIZE 999
-
-typedef struct PtechVar {
-  char key[MAX_VARNAME_SIZE];
-  char value[MAX_VALUE_SIZE];
-  UT_hash_handle hh;
-} PtechVar;
-
-PtechVar * allvars = NULL;
-
-void print_help(void);
-const char * file_to_string(const char * path);
 void ptech_parse(const char esc, const char * in);
-PtechVar * ptech_dref_var(const char * k);
-void ptech_add_var(const char * k, const char * v);
+
+void print_help(void)
+{
+  printf(
+      "usage: ptech <escape character> <file>\n"
+      "or:    ptech <file>\n"
+      "The latter defaults to '\\' as an escape.\n"
+      );
+}
 
 main(int argc, char * argv[])
 {
   char esc; /* user-configured escape character */
-  int argv_file_index; /* which arg is the file */
+  short argv_file_index; /* which arg is the file */
   PtechVar * s;
 
   if (argc < 2) { /* if no args */
     print_help();
-    return EXIT_SUCCESS;
+    exit(EXIT_SUCCESS);
   } else if (argc < 3) { /* if only file is given */
-    esc = '\\';
+    esc = DEFAULT_ESC;
     argv_file_index = 1;
   } else { /* if both escapechar and file are given */
     esc = argv[1][0];
@@ -52,22 +40,13 @@ main(int argc, char * argv[])
   ptech_parse(esc, buffer);
 }
 
-PtechVar * ptech_dref_var(const char * k)
-{
-  PtechVar * s;
-  HASH_FIND_STR(allvars, k, s);
-  return s;
-}
-
-void ptech_add_var(const char * k, const char * v)
-{
-  /* TODO: check if key already exists and shadow existing variable */
-  PtechVar * s;
-  s = malloc(sizeof(PtechVar));
-  strcpy(s->key, k);
-  strcpy(s->value, v);
-  HASH_ADD_STR(allvars, key, s);
-}
+/* BLOCK_DELIM checks if a character in a string is an escape character alone on a line.
+ * this is surprisingly complex as this escape char will be surrounded by newlines
+ * unless it is at the very beginning or end of the file (which will often be the case!).
+ * if we're calling this we already know that s[i] is an escape character
+ * - takes (string, iterator)
+ */
+#define BLOCK_DELIM(s, i) (i == 0 && s[i+1] == '\n') || (s[i-1] == '\n' && (s[i+1] == '\n' || s[i+1] == '\0'))
 
 void ptech_parse(const char esc, const char * in)
 {
@@ -155,48 +134,4 @@ void ptech_parse(const char esc, const char * in)
     }
     ++i;
   }
-}
-
-void print_help(void)
-{
-  printf(
-      "usage: ptech <escape character> <file>\n"
-      "or:    ptech <file>\n"
-      "The latter defaults to '\\' as an escape.\n"
-      );
-}
-
-const char * file_to_string(const char * path)
-{
-  char * buffer = 0;
-  long length;
-  FILE * f = fopen (path, "rb");
-
-  if (f == NULL) {
-    ERR("Null file pointer. File does not exist or is not readable.");
-    DIE;
-  }
-  
-  /* TODO: more errors */
-  fseek (f, 0, SEEK_END);
-  length = ftell (f);
-  fseek (f, 0, SEEK_SET);
-  buffer = malloc (length);
-  fread (buffer, 1, length, f);
-  fclose (f);
-  buffer[length] = '\0';
-
-  return buffer;
-}
-
-/* useless now */
-int string_to_int(const char * name)
-{
-  int i = 0,
-      ret = 0;
-  while (name[i] != '\0') {
-    ret = ret + (int) name[i];
-    ++i;
-  }
-  return ret;
 }

@@ -1,0 +1,5 @@
+\
+	!%@#$% \foo bar\
+\
+The C implementation has no restrictions on variable names aside from spaces.
+The value of !%@#$% is \!%@#$%\.

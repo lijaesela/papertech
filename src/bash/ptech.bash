@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
+# WARNING: the usage and error handling of this script differ from the c implementation. I will fix this  l a t e r
+
 #
 # hyper-minimal macro language
 # concatenates multiple files if given
-# usage: ptech <file.pt>
 #
 
 set -e
