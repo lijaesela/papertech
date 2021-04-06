@@ -13,8 +13,8 @@
  */
 #define BLOCK_DELIM(s, i) (i == 0 && s[i+1] == '\n') || (s[i-1] == '\n' && (s[i+1] == '\n' || s[i+1] == '\0'))
 
-#define MAX_VALUE_SIZE 999
 #define MAX_VARNAME_SIZE 999
+#define MAX_VALUE_SIZE 999
 
 typedef struct PtechVar {
   char key[MAX_VARNAME_SIZE];
@@ -80,7 +80,10 @@ void ptech_parse(const char esc, const char * in)
   int i = 0;
   int ii = 0;
   short pstate = Norm;
+  /* buffer used for both dereferencing and setting variables. always holds a variable name. */
   char buf[MAX_VARNAME_SIZE];
+  /* buffer used to hold contents of variable being declared */
+  char contents[MAX_VALUE_SIZE];
   PtechVar * v;
 
   while (in[i] != '\0') {
@@ -112,12 +115,42 @@ void ptech_parse(const char esc, const char * in)
         break;
       case Blok: /* in comment or declaration */
         if (in[i] == esc) {
-          if (BLOCK_DELIM(in, i))
+          if (BLOCK_DELIM(in, i)) {
             ++i;
             pstate = Norm;
+          } else {
+            /* top buf off for Decl mode */
+            buf[ii] = '\0';
+            pstate = Decl;
+          }
+          ii = 0;
+          break;
+        }
+        switch (in[i]) {
+          /* ignore whitespace */
+          case ' ':
+            break;
+          case '\t':
+            break;
+          case '\n':
+            ii = 0;
+            break;
+          default:
+            buf[ii] = in[i];
+            ++ii;
+            break;
         }
         break;
       case Decl: /* initializing a variable */
+        if (in[i] == esc) {
+          contents[ii] = '\0';
+          ii = 0;
+          ptech_add_var(buf, contents);
+          pstate = Blok;
+        } else {
+          contents[ii] = in[i];
+          ++ii;
+        }
         break;
     }
     ++i;

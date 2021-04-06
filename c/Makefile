@@ -1,4 +1,6 @@
-# yeah it's a shitty makefile idc
-# btw u need uthash, it's available on most distros
+# requires 'uthash', a header file available on most distros
+
+CFLAGS=--std=c90
+
 make:
-	cc --std=c90 ptech.c
+	cc $(CFLAGS) ptech.c
